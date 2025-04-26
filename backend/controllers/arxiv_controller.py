@@ -31,6 +31,10 @@ class ArxivPaper:
     relevance_score: float = 0.0
     reasoning: str = ""
 
+"""
+TODO:
+1. We have a pdf url, if we could analyze that in some fashion, that would be ideal. note: needs to be https and has file size limits.
+"""
 async def evaluate_arxiv_paper(paper: ArxivPaper, description: str) -> Dict[str, Union[float, str]]:
     prompt = f"""
 You are evaluating the relevance of a research paper to a patent/invention description.
@@ -40,10 +44,13 @@ A score of 1 means that the description will infringe upon the given paper.
 Invention Description:
 {description}
 
+Paper Details:
+Title: {paper.title}
+Summary: {paper.summary}
+
 Output a single float number between 0 and 1 representing the relevance score.
 0 means completely irrelevant, 1 means the invention would infringe on this paper.
 Consider:
-- The attached PDF of the paper.
 - Conceptual similarity
 - Technical overlap
 - Potential applicability
@@ -56,35 +63,25 @@ Respond with a JSON object containing two fields:
 
 Example format:
 {{"relevance_score": 0.75, "reasoning": "This paper is highly relevant because..."}}
+
+Return only valid minified JSON with no Markdown formatting, no code fences,
+no explanation text—just the JSON object.
 """
     try:
-        print(f"Paper Title: {paper.title}")
-        print(f"Paper PDF Url: {paper.pdf_url}")
         message = anthropic.messages.create(
             model=claude_model,
-            max_tokens=1000,
+            max_tokens=2000,
             temperature=0,
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
-                            "type": "document",
-                            "source": {
-                                "type": "url",
-                                "url": paper.pdf_url
-                            }
-                        }
-                    ]
+                    "content": prompt
                 }
             ]
         )
         
         result = json.loads(message.content[0].text)
+
         result["relevance_score"] = max(0.0, min(1.0, float(result["relevance_score"])))
         return result
     except Exception as e:
@@ -120,7 +117,7 @@ HARD RULES
 
 HEURISTICS
 • Pick high-leverage synonyms—three strong OR-tokens beat eight weak ones.  
-• Include the application domain (“dating”) if it improves precision.  
+• Include the application domain ("dating") if it improves precision.  
 • Skip marketing adjectives and generic verbs.
 
 ---
@@ -146,18 +143,13 @@ def extract_arxiv_id(entry_id: str) -> str:
     # entry_id format: http://arxiv.org/abs/2403.12345v1
     return entry_id.split('/')[-1]
 
-def convert_to_https_arxiv(url: str) -> str:
-    if url.startswith('http://'):
-        return url.replace('http://', 'https://')
-    return url
-
 def search_papers(query: str, max_results: int = 25) -> List[ArxivPaper]:
     client = arxiv.Client()
     search = arxiv.Search(
         query=query,
         max_results=max_results,
         sort_by=arxiv.SortCriterion.Relevance,
-        sort_order      = arxiv.SortOrder.Descending,
+        sort_order = arxiv.SortOrder.Descending,
     )
 
     results = []
@@ -166,15 +158,13 @@ def search_papers(query: str, max_results: int = 25) -> List[ArxivPaper]:
             title=result.title,
             authors=[author.name for author in result.authors],
             summary=result.summary,
-            pdf_url=convert_to_https_arxiv(result.pdf_url),
+            pdf_url=result.pdf_url,  # We keep this but won't use it for evaluation
             published=result.published.strftime("%Y-%m-%d"),
             paper_url=result.entry_id,
             paper_id=extract_arxiv_id(result.entry_id),
             doi=result.doi
         )
         results.append(paper)
-    
-    print(f"Analyzing {len(results)} Papers")
         
     return results
 
@@ -185,9 +175,6 @@ def search_papers(query: str, max_results: int = 25) -> List[ArxivPaper]:
 """
 async def search_by_description(description: str, max_papers: int = 10) -> List[ArxivPaper]:
     raw_query = await get_search_query(description)
-    print("Raw query:\n", raw_query)
-
-    # strip common indentation and fold every run of whitespace to a single space
     query = " ".join(textwrap.dedent(raw_query).split())
 
     papers = search_papers(query, max_results=max_papers)
