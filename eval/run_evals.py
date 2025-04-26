@@ -68,8 +68,8 @@ def load_eval_cases(csv_path: str | Path) -> List[EvalCase]:
             # Convert string representation of list to actual list based on type
             ground_truth_str = row['ground_truth'].strip('[]')
 
-            # For patent type, split by comma and ensure clean patent IDs
-            ground_truth = [x.strip().upper() for x in ground_truth_str.split(',') if x.strip()]
+            # For patent type, split by comma and strip quotes, spaces, and ensure clean patent IDs
+            ground_truth = [x.strip().strip('"\'').upper() for x in ground_truth_str.split(',') if x.strip()]
         else:
             raise ValueError(f"Unsupported evaluation case type: {row['type']}")
         
