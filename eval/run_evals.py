@@ -38,40 +38,14 @@ class EvalRun:
         """Returns list of case IDs that failed."""
         return [case_id for case_id, result in self.results.items() if not result['passed']]
     
-    def get_results_by_type(self) -> Dict[str, Dict[str, int]]:
-        """
-        Groups results by type and calculates metrics for each type.
-        Returns dict with type -> {total, passed, failed} mapping.
-        """
-        type_results = {}
-        for result in self.results.values():
-            eval_type = result['type']
-            if eval_type not in type_results:
-                type_results[eval_type] = {'total': 0, 'passed': 0, 'failed': 0}
-            
-            type_results[eval_type]['total'] += 1
-            if result['passed']:
-                type_results[eval_type]['passed'] += 1
-            else:
-                type_results[eval_type]['failed'] += 1
-        return type_results
-
     def summary(self) -> str:
         """Returns a formatted summary of the evaluation results."""
         summary_lines = [
             f"Evaluation Summary:",
             f"Total cases: {self.total_cases}",
             f"Passed cases: {self.passed_cases}",
-            f"Pass rate: {self.pass_rate:.1f}%",
-            "\nResults by type:"
+            f"Pass rate: {self.pass_rate:.1f}%"
         ]
-        
-        for eval_type, stats in self.get_results_by_type().items():
-            type_pass_rate = (stats['passed'] / stats['total']) * 100 if stats['total'] > 0 else 0
-            summary_lines.append(
-                f"{eval_type}: {stats['passed']}/{stats['total']} passed ({type_pass_rate:.1f}%)"
-            )
-        
         return "\n".join(summary_lines)
 
 
@@ -176,7 +150,8 @@ def run_and_evaluate(eval_cases: List[EvalCase]) -> EvalRun:
 
 # Example usage
 if __name__ == "__main__":
-    eval_cases = load_eval_cases('eval/evals.csv')
+    eval_cases = load_eval_cases('eval/generated_evals.csv')
+    # eval_cases = load_eval_cases('eval/demo_evals.csv')
     eval_run = run_and_evaluate(eval_cases)
     
     # Print summary
