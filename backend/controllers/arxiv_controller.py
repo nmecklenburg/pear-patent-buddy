@@ -5,6 +5,7 @@ import json
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import textwrap
+import asyncio
 
 load_dotenv()
 
@@ -35,8 +36,9 @@ class ArxivPaper:
 TODO:
 1. We have a pdf url, if we could analyze that in some fashion, that would be ideal. note: needs to be https and has file size limits.
 """
-async def evaluate_arxiv_paper(paper: ArxivPaper, description: str) -> Dict[str, Union[float, str]]:
-    prompt = f"""
+async def evaluate_arxiv_paper(paper: ArxivPaper, description: str, semaphore: asyncio.Semaphore) -> Dict[str, Union[float, str]]:
+    async with semaphore:
+        prompt = f"""
 You are evaluating the relevance of a research paper to a patent/invention description.
 Analyze how relevant and similar the paper's concepts are to the invention.
 A score of 1 means that the description will infringe upon the given paper.
@@ -67,30 +69,41 @@ Example format:
 Return only valid minified JSON with no Markdown formatting, no code fences,
 no explanation text—just the JSON object.
 """
-    try:
-        message = anthropic.messages.create(
-            model=claude_model,
-            max_tokens=2000,
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
-        
-        result = json.loads(message.content[0].text)
-
-        result["relevance_score"] = max(0.0, min(1.0, float(result["relevance_score"])))
-        return result
-    except Exception as e:
-        print(f"Error evaluating paper: {e}")
-        return {"relevance_score": 0.0, "reasoning": f"Failed to evaluate paper: {str(e)}"}
+        try:
+            message = anthropic.messages.create(
+                model=claude_model,
+                max_tokens=2000,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+            
+            result = json.loads(message.content[0].text)
+            result["relevance_score"] = max(0.0, min(1.0, float(result["relevance_score"])))
+            return result
+        except Exception as e:
+            print(f"Error evaluating paper: {e}")
+            return {"relevance_score": 0.0, "reasoning": f"Failed to evaluate paper: {str(e)}"}
 
 async def score_and_sort_papers(papers: List[ArxivPaper], description: str) -> List[ArxivPaper]:
-    for paper in papers:
-        result = await evaluate_arxiv_paper(paper, description)
+    # Create a semaphore limiting to 10 concurrent API calls
+    semaphore = asyncio.Semaphore(10)
+    
+    # Create evaluation tasks for all papers
+    tasks = [
+        evaluate_arxiv_paper(paper, description, semaphore)
+        for paper in papers
+    ]
+    
+    # Wait for all evaluations to complete
+    results = await asyncio.gather(*tasks)
+    
+    # Update papers with their scores and reasoning
+    for paper, result in zip(papers, results):
         paper.relevance_score = result["relevance_score"]
         paper.reasoning = result["reasoning"]
     
