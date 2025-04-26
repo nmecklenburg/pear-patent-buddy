@@ -4,10 +4,8 @@ from pydantic import BaseModel
 from controllers.arxiv_controller import search_by_description, ArxivPaper
 from typing import List
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
-
 
 app = FastAPI()
 

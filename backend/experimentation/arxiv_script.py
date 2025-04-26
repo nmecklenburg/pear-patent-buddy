@@ -3,10 +3,6 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from controllers.arxiv_controller import search_by_description
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 description = """
 I am creating a swipe to unlock feature where the user will be putting their finger 
@@ -16,15 +12,13 @@ whatever device the user was using.
 """
 
 async def main():
-    papers = await search_by_description(description)
+    papers_with_pdf = await search_by_description(description, max_papers=5)
     
-    print(f"\nSearch results for: {description}\n")
-    for i, paper in enumerate(papers, 1):
+    for i, paper in enumerate(papers_with_pdf, 1):
         print(f"{i}. Title: {paper.title}")
+        print(f"   Paper ID: {paper.paper_id}")
         print(f"   Relevance Score: {paper.relevance_score:.2f}")
-        print(f"   Authors: {', '.join(paper.authors)}")
-        print(f"   Summary: {paper.summary[:200]}...")
-        print(f"   URL: {paper.paper_url}")
+        print(f"   Reasoning: {paper.reasoning}")
         print("-" * 80)
 
 if __name__ == "__main__":
