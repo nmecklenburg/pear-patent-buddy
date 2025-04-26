@@ -105,7 +105,9 @@ async def score_and_sort_papers(papers: List[ArxivPaper], description: str) -> L
         paper.relevance_score = result["relevance_score"]
         paper.reasoning = result["reasoning"]
     
-    return sorted(papers, key=lambda x: x.relevance_score, reverse=True)
+    # Filter out papers with relevance score of 0 and sort the rest
+    relevant_papers = [p for p in papers if p.relevance_score > 0]
+    return sorted(relevant_papers, key=lambda x: x.relevance_score, reverse=True)
 
 async def get_search_query(description: str) -> str:
     prompt = f"""

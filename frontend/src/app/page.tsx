@@ -9,16 +9,135 @@ import {
 } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react"
 
 interface ArxivPaper {
   title: string
   summary: string
   authors: string[]
-  link: string
+  pdf_url: string
   published: string
   relevance_score: number
+  reasoning: string
+}
+
+interface PaperCardProps {
+  paper: ArxivPaper
+}
+
+// Helper function to format LaTeX in text
+function formatLatex(text: string): string {
+  const regex = /\$([^$]+)\$/g;
+  return text.replace(regex, (match) => {
+    // Just return the original LaTeX for now
+    return match;
+  });
+}
+
+function PaperCard({ paper }: PaperCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const summaryPreviewLength = 150
+
+  return (
+    <Card className="p-4">
+      <div className="space-y-2">
+        <div className="flex justify-between items-start gap-4">
+          <h3 className="font-medium flex-1">
+            {formatLatex(paper.title)}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">
+              Score: {paper.relevance_score.toFixed(2)}
+            </span>
+            <a 
+              href={paper.pdf_url}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded-md hover:bg-primary/90"
+            >
+              PDF
+            </a>
+          </div>
+        </div>
+        
+        <div className="text-sm text-muted-foreground">
+          <p className="text-xs">Published: {paper.published}</p>
+          <p className="text-xs">Authors: {paper.authors.join(", ")}</p>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            {isExpanded ? paper.summary : paper.summary.slice(0, summaryPreviewLength) + "..."}
+          </p>
+          {paper.summary.length > summaryPreviewLength && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? (
+                <><ChevronUp className="h-4 w-4 mr-1" /> Show Less</>
+              ) : (
+                <><ChevronDown className="h-4 w-4 mr-1" /> Show More</>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {isExpanded && paper.reasoning && (
+          <div className="mt-2 pt-2 border-t">
+            <p className="text-sm font-medium">Relevance Analysis:</p>
+            <p className="text-sm text-muted-foreground">{paper.reasoning}</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function AutoExpandingTextarea({ 
+  value, 
+  onChange, 
+  disabled,
+  onSubmit 
+}: { 
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  disabled: boolean
+  onSubmit: () => void
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '4rem'; // 2 lines default height
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent newline
+      if (!disabled) {
+        onSubmit();
+      }
+    }
+  };
+
+  return (
+    <Textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      onKeyDown={handleKeyDown}
+      disabled={disabled}
+      placeholder="Enter a detailed description of your invention... (Press Enter to search, Shift+Enter for new line)"
+      className="min-h-[4rem] transition-height duration-200"
+      style={{ resize: 'none', overflow: 'hidden' }}
+    />
+  );
 }
 
 export default function Home() {
@@ -78,53 +197,38 @@ export default function Home() {
               >
                 Invention Description
               </label>
-              <Textarea
-                id="description"
-                placeholder="Enter a detailed description of your invention..."
-                className="min-h-[150px] resize-none"
+              <AutoExpandingTextarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isLoading}
+                onSubmit={handleSearch}
               />
               {error && (
                 <p className="text-sm text-red-500 mt-2">{error}</p>
               )}
             </div>
-            <Button 
-              className="w-full sm:w-auto" 
-              size="lg" 
-              onClick={handleSearch}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                'Search Prior Art'
-              )}
-            </Button>
+            <div className="flex justify-end">
+              <Button 
+                size="lg" 
+                onClick={handleSearch}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  'Search Prior Art'
+                )}
+              </Button>
+            </div>
 
             {papers.length > 0 && (
               <div className="mt-8 space-y-4">
                 <h2 className="text-xl font-semibold">Search Results</h2>
                 {papers.map((paper, index) => (
-                  <Card key={index} className="p-4">
-                    <h3 className="font-medium">{paper.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{paper.summary}</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <p className="text-sm">Score: {paper.relevance_score.toFixed(2)}</p>
-                      <a 
-                        href={paper.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline"
-                      >
-                        View Paper
-                      </a>
-                    </div>
-                  </Card>
+                  <PaperCard key={index} paper={paper} />
                 ))}
               </div>
             )}
