@@ -1,0 +1,7 @@
+jupyterlab
+anthropic
+requests
+beautifulsoup4
+tqdm
+colorama
+selenium
