@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 from anthropic import Anthropic
 from dotenv import load_dotenv
+import textwrap
 
 load_dotenv()
 
@@ -100,29 +101,30 @@ async def score_and_sort_papers(papers: List[ArxivPaper], description: str) -> L
 
 async def get_search_query(description: str) -> str:
     prompt = f"""
-You are an expert patent analyst and scientific researcher tasked with finding relevant prior art on arXiv.
+You are an expert patent analyst.
+From the patent-claim description below, output ONE arXiv Boolean search query.
 
-Given the following patent-claim description, extract the most technically significant concepts, components, methods, and applications, then generate a single arXiv search query.
+HARD RULES
+1. Compose 2 – 4 groups joined by AND.  
+   • Each group is wrapped in parentheses: ( … ).  
+   • Inside a group, list 2 – 4 synonyms joined by OR.  
+   • Prefix every token with the same field code (use all: unless ti:, abs:, au:, cat: is clearly better).
 
-**Mandatory arXiv syntax rules**
-• Prefix every search term or phrase with an arXiv field code.  
-  – Use `all:` unless a specific field (`ti:`, `abs:`, `au:`, `cat:` …) is clearly better.  
-• Capitalise Boolean operators (`AND`, `OR`, `ANDNOT`).  
-• Group OR-lists inside parentheses.  
-• Wrap multi-word phrases in double quotes.  
-• Do *not* URL-encode anything; return plain text.  
-• Output **only** the final query string.
-• Prefix every token or quoted phrase with a field code (use all: by default).
-• Do NOT output raw ( ) or " " — leave them in, but remember the client must URL-encode
-  ( → %28, ) → %29, " → %22) before sending the HTTP request.
+     Example pattern:
+     (all:dating OR all:matchmaking) AND (all:recommender OR all:filtering) AND (all:profile OR all:multimedia)
 
-**Guidelines for good recall + precision**
-1. Identify core technical concepts and their common synonyms.  
-2. Balance broad umbrella terms with specific implementations.  
-3. Include relevant application domains or device classes.  
-4. Omit stop-words and non-technical phrasing.
+2. Prefer single-word tokens; use a quoted multi-word phrase only if there is no concise single-word alternative.
+3. Capitalise Boolean operators (AND, OR, ANDNOT).
+4. Do not URL-encode anything.
+5. Return exactly **one line** containing only the final query—no extra spaces at either end.
 
-Patent claim description:
+HEURISTICS
+• Pick high-leverage synonyms—three strong OR-tokens beat eight weak ones.  
+• Include the application domain (“dating”) if it improves precision.  
+• Skip marketing adjectives and generic verbs.
+
+---
+Patent-claim description
 {description}
 """
 
@@ -149,12 +151,13 @@ def convert_to_https_arxiv(url: str) -> str:
         return url.replace('http://', 'https://')
     return url
 
-def search_papers(query: str, max_results: int = 10) -> List[ArxivPaper]:
+def search_papers(query: str, max_results: int = 25) -> List[ArxivPaper]:
     client = arxiv.Client()
     search = arxiv.Search(
         query=query,
         max_results=max_results,
-        sort_by=arxiv.SortCriterion.Relevance
+        sort_by=arxiv.SortCriterion.Relevance,
+        sort_order      = arxiv.SortOrder.Descending,
     )
 
     results = []
@@ -181,7 +184,13 @@ def search_papers(query: str, max_results: int = 10) -> List[ArxivPaper]:
 3. Analyze Papers: Use LLM to analyze papers and return the most relevant ones
 """
 async def search_by_description(description: str, max_papers: int = 10) -> List[ArxivPaper]:
-    query = await get_search_query(description)
+    raw_query = await get_search_query(description)
+    print("Raw query:\n", raw_query)
+
+    # strip common indentation and fold every run of whitespace to a single space
+    query = " ".join(textwrap.dedent(raw_query).split())
+
     papers = search_papers(query, max_results=max_papers)
-    
-    return await score_and_sort_papers(papers, description)
+    sorted_papers = await score_and_sort_papers(papers, description)
+
+    return sorted_papers
