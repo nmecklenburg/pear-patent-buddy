@@ -8,6 +8,7 @@ import os
 
 load_dotenv()
 
+
 app = FastAPI()
 
 # Allow only the frontend running at localhost:3000
