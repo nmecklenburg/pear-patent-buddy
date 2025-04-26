@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useState, useRef, useEffect } from "react"
 import { Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ArxivPaper {
   title: string
@@ -24,6 +25,47 @@ interface ArxivPaper {
 
 interface PaperCardProps {
   paper: ArxivPaper
+}
+
+function RelevanceIndicator({ score }: { score: number }) {
+  let status: 'not-relevant' | 'somewhat-relevant' | 'highly-relevant'
+  let label: string
+  let bgColor: string
+  let textColor: string
+  
+  if (score < 0.3) {
+    status = 'not-relevant'
+    label = 'Not Relevant'
+    bgColor = 'bg-red-100'
+    textColor = 'text-red-700'
+  } else if (score < 0.7) {
+    status = 'somewhat-relevant'
+    label = 'Somewhat Relevant'
+    bgColor = 'bg-yellow-100'
+    textColor = 'text-yellow-700'
+  } else {
+    status = 'highly-relevant'
+    label = 'Really Relevant'
+    bgColor = 'bg-green-100'
+    textColor = 'text-green-700'
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-medium whitespace-nowrap">
+        {score.toFixed(2)}
+      </span>
+      <div
+        className={cn(
+          "px-3 py-1 rounded-md text-sm font-medium whitespace-nowrap",
+          bgColor,
+          textColor
+        )}
+      >
+        {label}
+      </div>
+    </div>
+  )
 }
 
 // Helper function to format LaTeX in text
@@ -42,14 +84,12 @@ function PaperCard({ paper }: PaperCardProps) {
   return (
     <Card className="p-4">
       <div className="space-y-2">
-        <div className="flex justify-between items-start gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           <h3 className="font-medium flex-1">
             {formatLatex(paper.title)}
           </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              Score: {paper.relevance_score.toFixed(2)}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <RelevanceIndicator score={paper.relevance_score} />
             <a 
               href={paper.pdf_url}
               target="_blank" 
