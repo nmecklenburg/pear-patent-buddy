@@ -1,5 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from controllers.arxiv_controller import search_by_description, ArxivPaper
+from typing import List
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 app = FastAPI()
 
@@ -16,6 +24,12 @@ app.add_middleware(
     allow_headers=["*"],    # You can restrict headers if needed
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
+class SearchRequest(BaseModel):
+    description: str
+    max_papers: int = 10
+
+# TODO: response object?
+@app.post("/api/search", response_model=List[ArxivPaper])
+async def search_papers(request: SearchRequest):
+    papers = await search_by_description(request.description, request.max_papers)
+    return papers

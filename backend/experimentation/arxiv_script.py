@@ -1,5 +1,12 @@
 import asyncio
-from arxiv_controller import search_by_description
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from controllers.arxiv_controller import search_by_description
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 description = """
 I am creating a swipe to unlock feature where the user will be putting their finger 

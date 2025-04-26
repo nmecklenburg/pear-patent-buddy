@@ -21,6 +21,55 @@ class ArxivPaper:
     doi: Optional[str]
     relevance_score: float = 0.0
 
+async def evaluate_arxiv_paper(paper: ArxivPaper, description: str) -> float:
+    """
+    Evaluate a single arxiv paper's relevance to the original description using LLM.
+    Returns a relevance score between 0 and 1.
+    """
+    prompt = f"""
+You are evaluating the relevance of a research paper to a patent/invention description.
+Analyze how relevant and similar the paper's concepts are to the invention.
+
+Invention Description:
+\"\"\"{description}\"\"\"
+
+Paper to Evaluate:
+Title: {paper.title}
+Summary: {paper.summary}
+
+Output a single float number between 0 and 1 representing the relevance score.
+0 means completely irrelevant, 1 means highly relevant.
+Consider:
+- Conceptual similarity
+- Technical overlap
+- Potential applicability
+- Implementation methods
+
+Output only the number, no explanations.
+"""
+    
+    response = await acompletion(
+        model="anthropic/claude-3-5-haiku-20241022",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+    
+    try:
+        score = float(response.choices[0].message.content.strip())
+        # Ensure score is between 0 and 1
+        return max(0.0, min(1.0, score))
+    except ValueError:
+        return 0.0
+
+async def score_and_sort_papers(papers: List[ArxivPaper], description: str) -> List[ArxivPaper]:
+    """
+    Score papers using LLM evaluation and sort by relevance.
+    """
+    # Evaluate each paper
+    for paper in papers:
+        paper.relevance_score = await evaluate_arxiv_paper(paper, description)
+    
+    return sorted(papers, key=lambda x: x.relevance_score, reverse=True)
 
 async def get_search_query(description: str) -> str:
     prompt = f"""
@@ -65,19 +114,6 @@ def search_papers(query: str, max_results: int = 10) -> List[ArxivPaper]:
         
     return results
 
-# TODO: Use claude to do this?
-def score_and_sort_papers(papers: List[ArxivPaper], query: str) -> List[ArxivPaper]:
-    keywords = query.lower().split()
-    for paper in papers:
-        score = 0
-        paper_text = f"{paper.title.lower()} {paper.summary.lower()}"
-        for keyword in keywords:
-            if keyword in paper_text:
-                score += 1
-        paper.relevance_score = score / len(keywords) if keywords else 0.0
-    
-    return sorted(papers, key=lambda x: x.relevance_score, reverse=True)
-
 """
 1. Analyze Input: Use LLM to take in description and produce keywords
 2. Search Arxiv: Currently using python library
@@ -88,4 +124,4 @@ async def search_by_description(description: str, max_papers: int = 10) -> List[
     
     papers = search_papers(query, max_results=max_papers)
     
-    return score_and_sort_papers(papers, query)
+    return await score_and_sort_papers(papers, description)
