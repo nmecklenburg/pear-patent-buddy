@@ -15,7 +15,7 @@ claude-3-5-sonnet-20240620
 claude-3-opus-20240229
 claude-3-5-haiku-20241022 --> cheapest
 """
-claude_model="claude-3-5-haiku-20241022"
+claude_model="claude-3-7-sonnet-20250219"
 
 @dataclass
 class ArxivPaper:
