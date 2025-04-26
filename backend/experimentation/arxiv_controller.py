@@ -65,22 +65,26 @@ def search_papers(query: str, max_results: int = 10) -> List[ArxivPaper]:
         
     return results
 
+def score_and_sort_papers(papers: List[ArxivPaper], query: str) -> List[ArxivPaper]:
+    keywords = query.lower().split()
+    for paper in papers:
+        score = 0
+        paper_text = f"{paper.title.lower()} {paper.summary.lower()}"
+        for keyword in keywords:
+            if keyword in paper_text:
+                score += 1
+        paper.relevance_score = score / len(keywords) if keywords else 0.0
+    
+    return sorted(papers, key=lambda x: x.relevance_score, reverse=True)
+
 """
+1. Analyze Input: Use LLM to take in description and produce keywords
+2. Search Arxiv: Currently using python library
+3. Analyze Papers: Use LLM to analyze papers and return the most relevant ones
 """
 async def search_by_description(description: str, max_papers: int = 10) -> List[ArxivPaper]:
     query = await get_search_query(description)
+    
     papers = search_papers(query, max_results=max_papers)
     
-    return papers
-
-    # keywords = query.lower().split()
-    # for paper in papers:
-    #     score = 0
-    #     paper_text = f"{paper.title.lower()} {paper.summary.lower()}"
-    #     for keyword in keywords:
-    #         if keyword in paper_text:
-    #             score += 1
-    #     paper.relevance_score = score / len(keywords) if keywords else 0.0
-    
-    # sorted_papers = sorted(papers, key=lambda x: x.relevance_score, reverse=True)
-    # return sorted_papers
+    return score_and_sort_papers(papers, query)
