@@ -13,7 +13,6 @@ async def main():
     
     for i, paper in enumerate(papers_with_pdf, 1):
         print(f"{i}. Title: {paper.title}")
-        print(f"   Paper ID: {paper.paper_id}")
         print(f"   Relevance Score: {paper.relevance_score:.2f}")
         print(f"   Reasoning: {paper.reasoning}")
         print("-" * 80)

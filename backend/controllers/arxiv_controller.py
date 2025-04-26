@@ -99,10 +99,8 @@ async def score_and_sort_papers(papers: List[ArxivPaper], description: str) -> L
         for paper in papers
     ]
     
-    # Wait for all evaluations to complete
     results = await asyncio.gather(*tasks)
     
-    # Update papers with their scores and reasoning
     for paper, result in zip(papers, results):
         paper.relevance_score = result["relevance_score"]
         paper.reasoning = result["reasoning"]
@@ -191,6 +189,8 @@ async def search_by_description(description: str, max_papers: int = 10) -> List[
     query = " ".join(textwrap.dedent(raw_query).split())
 
     papers = search_papers(query, max_results=max_papers)
+
+    print(f"Analyzing {len(papers)} Papers")
     sorted_papers = await score_and_sort_papers(papers, description)
 
     return sorted_papers
