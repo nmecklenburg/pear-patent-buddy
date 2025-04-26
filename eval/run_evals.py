@@ -70,6 +70,14 @@ def load_eval_cases(csv_path: str | Path) -> List[EvalCase]:
 
             # For patent type, split by comma and strip quotes, spaces, and ensure clean patent IDs
             ground_truth = [x.strip().strip('"\'').upper() for x in ground_truth_str.split(',') if x.strip()]
+        elif row['type'] == 'arxiv':
+            # does the same as patents... lol
+
+            # Convert string representation of list to actual list based on type
+            ground_truth_str = row['ground_truth'].strip('[]')
+
+            # For patent type, split by comma and strip quotes, spaces, and ensure clean patent IDs
+            ground_truth = [x.strip().strip('"\'').upper() for x in ground_truth_str.split(',') if x.strip()]
         else:
             raise ValueError(f"Unsupported evaluation case type: {row['type']}")
         
@@ -104,6 +112,11 @@ def dummy_process_input(input_text: str, case_type: str) -> List[str]:
         # For patent type, return 5 random numbers as strings
         import random
         return [str(random.randint(0, 9000000)) for _ in range(5)]
+
+    if case_type == 'arxiv':
+        # For patent type, return 5 random numbers as strings
+        import random
+        return ['random', 'arxiv', 'ids']
     
     raise ValueError(f"Unsupported case type: {case_type}")
 
@@ -141,6 +154,13 @@ def run_and_evaluate(eval_cases: List[EvalCase]) -> EvalRun:
             
             # Check if all ground truth patents are in predicted output (order doesn't matter)
             result['passed'] = all(gt_patent in predicted_output for gt_patent in case.ground_truth)
+        elif case.type == 'arxiv':
+            # Does same thing as patent
+            # Assert that predicted_output is a list
+            assert isinstance(predicted_output, list), f"Predicted output must be a list, got {type(predicted_output)}"
+            
+            # Check if all ground truth patents are in predicted output (order doesn't matter)
+            result['passed'] = all(gt_patent in predicted_output for gt_patent in case.ground_truth)
         else:
             raise ValueError(f"Unknown evaluation case type: {case.type}")
             
@@ -150,8 +170,8 @@ def run_and_evaluate(eval_cases: List[EvalCase]) -> EvalRun:
 
 # Example usage
 if __name__ == "__main__":
-    eval_cases = load_eval_cases('eval/generated_evals.csv')
-    # eval_cases = load_eval_cases('eval/demo_evals.csv')
+    eval_cases = load_eval_cases('eval/datasets/arxiv_evals.csv')
+    # eval_cases = load_eval_cases('eval/datasets/demo_evals.csv')
     eval_run = run_and_evaluate(eval_cases)
     
     # Print summary

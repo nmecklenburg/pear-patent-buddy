@@ -85,7 +85,7 @@ Make sure each idea is unique and creative while clearly infringing on key aspec
     return InfringingIdeaResponse(infringing_ideas=ideas)
 
 async def main():
-    results = await process_patents_from_csv("./eval/random_patents.csv")
+    results = await process_patents_from_csv("./eval/arxiv_sources.csv")
     
     # Convert results to evaluation format
     eval_cases = []
