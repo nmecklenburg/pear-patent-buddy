@@ -74,6 +74,7 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+backend/experimentation/gpatents/.ipynb_checkpoints/*
 
 # Local development
 .local/
