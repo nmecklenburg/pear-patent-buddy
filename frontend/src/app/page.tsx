@@ -53,27 +53,27 @@ function CollapsibleSection({
       >
         {!isEmpty ? (
           isExpanded ? (
-            <ChevronDown className="h-5 w-5" />
+            <ChevronDown className="h-5 w-5 transition-transform duration-200" />
           ) : (
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5 transition-transform duration-200" />
           )
         ) : (
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         )}
         <h2 className={cn(
-          "text-xl font-semibold",
+          "text-xl font-semibold flex-1",
           isEmpty && "text-muted-foreground"
         )}>
           {title}
         </h2>
+        {isEmpty && (
+          <p className="text-sm text-muted-foreground">No results found</p>
+        )}
       </div>
       {!isEmpty && isExpanded && (
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 transition-all duration-200">
           {children}
         </div>
-      )}
-      {isEmpty && (
-        <p className="text-sm text-muted-foreground pl-7">No results found</p>
       )}
     </div>
   )
@@ -228,7 +228,7 @@ function AutoExpandingTextarea({
       onChange={onChange}
       onKeyDown={handleKeyDown}
       disabled={disabled}
-      placeholder="Enter a detailed description of your invention... (Press Enter to search, Shift+Enter for new line)"
+      placeholder="Enter a detailed description of your invention..."
       className="min-h-[4rem] transition-height duration-200"
       style={{ resize: 'none', overflow: 'hidden' }}
     />
@@ -314,7 +314,7 @@ export default function Home() {
                     Searching...
                   </>
                 ) : (
-                  'Search Prior Art'
+                  'Find Potential Infringement'
                 )}
               </Button>
             </div>
