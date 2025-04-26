@@ -10,7 +10,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useState, useRef, useEffect } from "react"
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ArxivPaper {
@@ -25,6 +25,58 @@ interface ArxivPaper {
 
 interface PaperCardProps {
   paper: ArxivPaper
+}
+
+interface CollapsibleSectionProps {
+  title: string
+  children: React.ReactNode
+  defaultExpanded?: boolean
+  isEmpty?: boolean
+}
+
+function CollapsibleSection({ 
+  title, 
+  children, 
+  defaultExpanded = true,
+  isEmpty = false
+}: CollapsibleSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
+  return (
+    <div className="space-y-2">
+      <div 
+        className={cn(
+          "flex items-center gap-2 cursor-pointer select-none",
+          !isEmpty && "hover:text-primary"
+        )}
+        onClick={() => !isEmpty && setIsExpanded(!isExpanded)}
+      >
+        {!isEmpty ? (
+          isExpanded ? (
+            <ChevronDown className="h-5 w-5" />
+          ) : (
+            <ChevronRight className="h-5 w-5" />
+          )
+        ) : (
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        )}
+        <h2 className={cn(
+          "text-xl font-semibold",
+          isEmpty && "text-muted-foreground"
+        )}>
+          {title}
+        </h2>
+      </div>
+      {!isEmpty && isExpanded && (
+        <div className="space-y-4 pt-2">
+          {children}
+        </div>
+      )}
+      {isEmpty && (
+        <p className="text-sm text-muted-foreground pl-7">No results found</p>
+      )}
+    </div>
+  )
 }
 
 function RelevanceIndicator({ score }: { score: number }) {
@@ -51,19 +103,22 @@ function RelevanceIndicator({ score }: { score: number }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm font-medium whitespace-nowrap">
-        {score.toFixed(2)}
-      </span>
+    <div 
+      className="flex items-center gap-1 group relative cursor-help"
+      title="An LLM assigned a score based on how much this article could be prior art"
+    >
       <div
         className={cn(
-          "px-3 py-1 rounded-md text-sm font-medium whitespace-nowrap",
+          "px-2 py-0.5 rounded text-sm font-medium whitespace-nowrap",
           bgColor,
           textColor
         )}
       >
         {label}
       </div>
+      <span className="text-sm font-medium whitespace-nowrap">
+        ({score.toFixed(2)})
+      </span>
     </div>
   )
 }
@@ -88,8 +143,7 @@ function PaperCard({ paper }: PaperCardProps) {
           <h3 className="font-medium flex-1">
             {formatLatex(paper.title)}
           </h3>
-          <div className="flex flex-wrap items-center gap-2">
-            <RelevanceIndicator score={paper.relevance_score} />
+          <div className="flex flex-col items-end gap-2">
             <a 
               href={paper.pdf_url}
               target="_blank" 
@@ -98,6 +152,7 @@ function PaperCard({ paper }: PaperCardProps) {
             >
               PDF
             </a>
+            <RelevanceIndicator score={paper.relevance_score} />
           </div>
         </div>
         
@@ -264,14 +319,16 @@ export default function Home() {
               </Button>
             </div>
 
-            {papers.length > 0 && (
-              <div className="mt-8 space-y-4">
-                <h2 className="text-xl font-semibold">Search Results</h2>
+            <div className="space-y-6">
+              <CollapsibleSection 
+                title="Relevant Research Papers" 
+                isEmpty={papers.length === 0}
+              >
                 {papers.map((paper, index) => (
                   <PaperCard key={index} paper={paper} />
                 ))}
-              </div>
-            )}
+              </CollapsibleSection>
+            </div>
           </div>
         </CardContent>
       </Card>
