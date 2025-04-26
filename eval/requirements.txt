@@ -1,0 +1,2 @@
+pandas==2.2.3
+litellm==1.67.2
