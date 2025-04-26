@@ -11,16 +11,14 @@ whatever device the user was using.
 async def main():
     papers = await search_by_description(description)
     
-    # print(f"\nSearch results for: {description}\n")
-    # for i, paper in enumerate(papers, 1):
-    #     print(f"{i}. Title: {paper.title}")
-    #     print(f"   Relevance Score: {paper.relevance_score:.2f}")
-    #     print(f"   Authors: {', '.join(paper.authors)}")
-    #     print(f"   Summary: {paper.summary[:200]}...")
-    #     print(f"   URL: {paper.paper_url}")
-    #     print("-" * 80)
-
-    print(papers)
+    print(f"\nSearch results for: {description}\n")
+    for i, paper in enumerate(papers, 1):
+        print(f"{i}. Title: {paper.title}")
+        print(f"   Relevance Score: {paper.relevance_score:.2f}")
+        print(f"   Authors: {', '.join(paper.authors)}")
+        print(f"   Summary: {paper.summary[:200]}...")
+        print(f"   URL: {paper.paper_url}")
+        print("-" * 80)
 
 if __name__ == "__main__":
     asyncio.run(main()) 

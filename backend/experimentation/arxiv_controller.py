@@ -65,6 +65,7 @@ def search_papers(query: str, max_results: int = 10) -> List[ArxivPaper]:
         
     return results
 
+# TODO: Use claude to do this?
 def score_and_sort_papers(papers: List[ArxivPaper], query: str) -> List[ArxivPaper]:
     keywords = query.lower().split()
     for paper in papers:
