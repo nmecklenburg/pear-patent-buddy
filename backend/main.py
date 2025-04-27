@@ -2,12 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from controllers.arxiv_controller import search_by_description, ArxivPaper
+from controllers.patent_controller import search_patents_by_description, Patent
 from typing import List
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
-
 
 app = FastAPI()
 
@@ -33,3 +32,10 @@ class SearchRequest(BaseModel):
 async def search_papers(request: SearchRequest):
     papers = await search_by_description(request.description, request.max_papers)
     return papers
+
+# TODO actually return more info about patent
+@app.post("/api/search_patents", response_model=List[Patent])
+async def search_patents(request: SearchRequest):
+    # TODO call search func from patent controller
+    patents = await search_patents_by_description(request.description)
+    return patents
