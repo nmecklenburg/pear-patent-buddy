@@ -36,14 +36,8 @@ interface CollapsibleSectionProps {
 
 function LoadingText() {
   return (
-    <div className="relative inline-flex items-center text-sm text-muted-foreground">
-      Searching for papers
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer" 
-        style={{ 
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 2s infinite linear'
-        }} 
-      />
+    <div className="relative inline-flex items-center text-sm text-primary font-medium">
+      <span className="loading-dots">Searching for papers</span>
     </div>
   )
 }
