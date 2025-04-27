@@ -34,12 +34,27 @@ interface CollapsibleSectionProps {
   isEmpty?: boolean
 }
 
+function LoadingText() {
+  return (
+    <div className="relative inline-flex items-center text-sm text-muted-foreground">
+      Searching for papers
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer" 
+        style={{ 
+          backgroundSize: '200% 100%',
+          animation: 'shimmer 2s infinite linear'
+        }} 
+      />
+    </div>
+  )
+}
+
 function CollapsibleSection({ 
   title, 
   children, 
   defaultExpanded = true,
-  isEmpty = false
-}: CollapsibleSectionProps) {
+  isEmpty = false,
+  isLoading = false
+}: CollapsibleSectionProps & { isLoading?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
@@ -47,11 +62,11 @@ function CollapsibleSection({
       <div 
         className={cn(
           "flex items-center gap-2 cursor-pointer select-none",
-          !isEmpty && "hover:text-primary"
+          !isEmpty && !isLoading && "hover:text-primary"
         )}
-        onClick={() => !isEmpty && setIsExpanded(!isExpanded)}
+        onClick={() => !isEmpty && !isLoading && setIsExpanded(!isExpanded)}
       >
-        {!isEmpty ? (
+        {!isEmpty && !isLoading ? (
           isExpanded ? (
             <ChevronDown className="h-5 w-5 transition-transform duration-200" />
           ) : (
@@ -66,11 +81,12 @@ function CollapsibleSection({
         )}>
           {title}
         </h2>
-        {isEmpty && (
+        {isEmpty && !isLoading && (
           <p className="text-sm text-muted-foreground">No results found</p>
         )}
+        {isLoading && <LoadingText />}
       </div>
-      {!isEmpty && isExpanded && (
+      {!isEmpty && !isLoading && isExpanded && (
         <div className="space-y-4 pt-2 transition-all duration-200">
           {children}
         </div>
@@ -103,10 +119,7 @@ function RelevanceIndicator({ score }: { score: number }) {
   }
 
   return (
-    <div 
-      className="flex items-center gap-1 group relative cursor-help"
-      title="An LLM assigned a score based on how much this article could be prior art"
-    >
+    <div className="group relative">
       <div
         className={cn(
           "px-2 py-0.5 rounded text-sm font-medium whitespace-nowrap",
@@ -116,20 +129,11 @@ function RelevanceIndicator({ score }: { score: number }) {
       >
         {label}
       </div>
-      <span className="text-sm font-medium whitespace-nowrap">
-        ({score.toFixed(2)})
-      </span>
+      <div className="absolute -top-8 right-0 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+        LLM Relevancy Score: {score.toFixed(2)}
+      </div>
     </div>
   )
-}
-
-// Helper function to format LaTeX in text
-function formatLatex(text: string): string {
-  const regex = /\$([^$]+)\$/g;
-  return text.replace(regex, (match) => {
-    // Just return the original LaTeX for now
-    return match;
-  });
 }
 
 function PaperCard({ paper }: PaperCardProps) {
@@ -140,9 +144,11 @@ function PaperCard({ paper }: PaperCardProps) {
     <Card className="p-4">
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-          <h3 className="font-medium flex-1">
-            {formatLatex(paper.title)}
-          </h3>
+          <div className="flex-1">
+            <h3 className="font-medium">
+              {paper.title}
+            </h3>
+          </div>
           <div className="flex flex-col items-end gap-2">
             <a 
               href={paper.pdf_url}
@@ -323,6 +329,7 @@ export default function Home() {
               <CollapsibleSection 
                 title="Relevant Research Papers" 
                 isEmpty={papers.length === 0}
+                isLoading={isLoading}
               >
                 {papers.map((paper, index) => (
                   <PaperCard key={index} paper={paper} />
