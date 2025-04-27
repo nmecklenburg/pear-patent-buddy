@@ -23,6 +23,13 @@ interface ArxivPaper {
   reasoning: string
 }
 
+interface Patent {
+  id: string
+  title: string
+  summary: string
+  relevance_score: number
+}
+
 interface PaperCardProps {
   paper: ArxivPaper
 }
@@ -34,10 +41,18 @@ interface CollapsibleSectionProps {
   isEmpty?: boolean
 }
 
-function LoadingText() {
+function PaperSearchLoadingText() {
   return (
     <div className="relative inline-flex items-center text-sm text-primary font-medium">
       <span className="loading-dots">Searching for papers</span>
+    </div>
+  )
+}
+
+function PatentSearchLoadingText() {
+  return (
+    <div className="relative inline-flex items-center text-sm text-primary font-medium">
+      <span className="loading-dots">Searching for patents</span>
     </div>
   )
 }
@@ -47,8 +62,12 @@ function CollapsibleSection({
   children, 
   defaultExpanded = true,
   isEmpty = false,
-  isLoading = false
-}: CollapsibleSectionProps & { isLoading?: boolean }) {
+  isLoading = false,
+  type = 'papers'
+}: CollapsibleSectionProps & { 
+  isLoading?: boolean,
+  type?: 'papers' | 'patents'
+}) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
@@ -78,7 +97,9 @@ function CollapsibleSection({
         {isEmpty && !isLoading && (
           <p className="text-sm text-muted-foreground">No results found</p>
         )}
-        {isLoading && <LoadingText />}
+        {isLoading && (
+          type === 'papers' ? <PaperSearchLoadingText /> : <PatentSearchLoadingText />
+        )}
       </div>
       {!isEmpty && !isLoading && isExpanded && (
         <div className="space-y-4 pt-2 transition-all duration-200">
@@ -192,6 +213,47 @@ function PaperCard({ paper }: PaperCardProps) {
   )
 }
 
+function PatentCard({ patent }: { patent: Patent }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const summaryPreviewLength = 150
+
+  return (
+    <Card className="p-4">
+      <div className="space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          <div className="flex-1">
+            <h3 className="font-medium">
+              {patent.title}
+            </h3>
+            <p className="text-sm text-primary">Patent #{patent.id}</p>
+          </div>
+          <RelevanceIndicator score={patent.relevance_score} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            {isExpanded ? patent.summary : patent.summary.slice(0, summaryPreviewLength) + "..."}
+          </p>
+          {patent.summary.length > summaryPreviewLength && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? (
+                <><ChevronUp className="h-4 w-4 mr-1" /> Show Less</>
+              ) : (
+                <><ChevronDown className="h-4 w-4 mr-1" /> Show More</>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 function AutoExpandingTextarea({ 
   value, 
   onChange, 
@@ -237,8 +299,10 @@ function AutoExpandingTextarea({
 
 export default function Home() {
   const [description, setDescription] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [isPapersLoading, setIsPapersLoading] = useState(false)
+  const [isPatentsLoading, setIsPatentsLoading] = useState(false)
   const [papers, setPapers] = useState<ArxivPaper[]>([])
+  const [patents, setPatents] = useState<Patent[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const handleSearch = async () => {
@@ -248,30 +312,45 @@ export default function Home() {
     }
 
     setError(null)
-    setIsLoading(true)
-    try {
-      const response = await fetch('http://localhost:8000/api/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description: description,
-          max_papers: 10
-        }),
+    setIsPapersLoading(true)
+    setIsPatentsLoading(true)
+
+    // Search papers
+    fetch('http://localhost:8000/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        description: description,
+        max_papers: 10
+      }),
+    })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch papers')
+        return response.json()
       })
+      .then(data => setPapers(data))
+      .catch(error => setError("Failed to search for papers. Please try again."))
+      .finally(() => setIsPapersLoading(false))
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch papers')
-      }
-
-      const data = await response.json()
-      setPapers(data)
-    } catch (error) {
-      setError("Failed to search for papers. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
+    // Search patents
+    fetch('http://localhost:8000/api/search_patents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        description: description,
+      }),
+    })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch patents')
+        return response.json()
+      })
+      .then(data => setPatents(data))
+      .catch(error => setError("Failed to search for patents. Please try again."))
+      .finally(() => setIsPatentsLoading(false))
   }
 
   return (
@@ -295,7 +374,7 @@ export default function Home() {
               <AutoExpandingTextarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                disabled={isLoading}
+                disabled={isPapersLoading || isPatentsLoading}
                 onSubmit={handleSearch}
               />
               {error && (
@@ -306,9 +385,9 @@ export default function Home() {
               <Button 
                 size="lg" 
                 onClick={handleSearch}
-                disabled={isLoading}
+                disabled={isPapersLoading || isPatentsLoading}
               >
-                {isLoading ? (
+                {(isPapersLoading || isPatentsLoading) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Searching...
@@ -323,10 +402,23 @@ export default function Home() {
               <CollapsibleSection 
                 title="Relevant Research Papers" 
                 isEmpty={papers.length === 0}
-                isLoading={isLoading}
+                isLoading={isPapersLoading}
+                type="papers"
               >
                 {papers.map((paper, index) => (
                   <PaperCard key={index} paper={paper} />
+                ))}
+              </CollapsibleSection>
+            </div>
+            <div className="space-y-6">
+              <CollapsibleSection 
+                title="Relevant Patents" 
+                isEmpty={patents.length === 0}
+                isLoading={isPatentsLoading}
+                type="patents"
+              >
+                {patents.map((patent, index) => (
+                  <PatentCard key={index} patent={patent} />
                 ))}
               </CollapsibleSection>
             </div>
